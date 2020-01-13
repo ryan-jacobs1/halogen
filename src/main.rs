@@ -11,9 +11,11 @@ struct Opts {
 
 #[derive(Clap)]
 enum SubCommand {
-    #[clap(name = "Build", version = "1.0", author = "Ryan Jacobs")]
+    #[clap(name = "build", version = "1.0", author = "Ryan Jacobs")]
     Build(Build),
+    #[clap(name = "run", version = "1.0", author = "Ryan Jacobs")]
     Run,
+    #[clap(name = "runner", version = "1.0", author = "Ryan Jacobs")]
     Runner(Runner)
 }
 
@@ -49,6 +51,8 @@ fn handle_run() {
     .stderr(Stdio::inherit())
     .arg("xrun")
     .spawn()
+    .expect("Failed to start")
+    .wait()
     .expect("Failed to run OxidizedOS");
 
 }
@@ -61,6 +65,8 @@ fn handle_runner() {
     .stdout(Stdio::inherit())
     .stderr(Stdio::inherit())
     .spawn()
+    .expect("Failed to start")
+    .wait()
     .expect("Failed to crate isodir");
 
     // Copy binary
@@ -69,6 +75,8 @@ fn handle_runner() {
     .stdout(Stdio::inherit())
     .stderr(Stdio::inherit())
     .spawn()
+    .expect("Failed to start")
+    .wait()
     .expect("Failed to copy oxos binary");
 
     // Copy grub cfg
@@ -77,6 +85,8 @@ fn handle_runner() {
     .stdout(Stdio::inherit())
     .stderr(Stdio::inherit())
     .spawn()
+    .expect("Failed to start")
+    .wait()
     .expect("Failed to copy oxos binary");
 
     // Generate iso
@@ -85,6 +95,8 @@ fn handle_runner() {
     .stdout(Stdio::inherit())
     .stderr(Stdio::inherit())
     .spawn()
+    .expect("Failed to start")
+    .wait()
     .expect("Failed to generate oxos iso");
 
     Command::new("qemu-system-x86_64")
@@ -93,6 +105,8 @@ fn handle_runner() {
     .stdin(Stdio::inherit())
     .stderr(Stdio::inherit())
     .spawn()
+    .expect("Failed to start")
+    .wait()
     .expect("Failed to run qemu");
     
     
