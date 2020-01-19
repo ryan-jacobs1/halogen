@@ -18,7 +18,7 @@ enum SubCommand {
     #[clap(name = "build", version = "1.0", author = "Ryan Jacobs")]
     Build(Build),
     #[clap(name = "run", version = "1.0", author = "Ryan Jacobs")]
-    Run,
+    Run(Run),
     #[clap(name = "runner", version = "1.0", author = "Ryan Jacobs")]
     Runner(Runner),
     #[clap(name = "clean", version = "1.0", author = "Ryan Jacobs")]
@@ -32,16 +32,24 @@ struct Build {
 }
 
 #[derive(Clap)]
+struct Run {
+    #[clap(short, long)]
+    graphic: bool
+}
+
+#[derive(Clap)]
 struct Runner {
     #[clap(short = "p", long = "path")]
-    path: String
+    path: String,
+    #[clap(short, long)]
+    graphic: bool
 }
 
 fn main() {
     let opts = Opts::parse();
     let exit_code = match opts.subcmd {
         SubCommand::Build(build) => handle_build(build),
-        SubCommand::Run => handle_run(),
+        SubCommand::Run(run) => handle_run(run),
         SubCommand::Runner(runner) => handle_runner(runner),
         SubCommand::Clean => handle_clean(),
     };
@@ -52,12 +60,16 @@ fn handle_build(build: Build) -> i32 {
     return 0;
 }
 
-fn handle_run() -> i32 {
+fn handle_run(run: Run) -> i32 {
+    let mut args = vec!("xrun", "--");
+    if run.graphic {
+        args.push("-g")
+    }
     println!("Running oxos");
     Command::new("cargo")
     .stdout(Stdio::inherit())
     .stderr(Stdio::inherit())
-    .arg("xrun")
+    .args(&args)
     .spawn()
     .expect("Failed to start")
     .wait()
@@ -109,9 +121,12 @@ fn handle_runner(runner: Runner) -> i32 {
     .expect("Failed to start")
     .wait()
     .expect("Failed to generate oxos iso");
-
+    let mut args = vec!("-smp", "4", "-cdrom", "oxos.iso", "--monitor", "none", "-device", "isa-debug-exit,iobase=0xf4,iosize=0x04", "-serial", "stdio");
+    if !runner.graphic {
+        args.push("-nographic");
+    }
     let status = Command::new("qemu-system-x86_64")
-    .args(&["-smp", "4", "-cdrom", "oxos.iso", "-nographic", "--monitor", "none", "-device", "isa-debug-exit,iobase=0xf4,iosize=0x04"])
+    .args(&args)
     .stdout(Stdio::inherit())
     .stdin(Stdio::inherit())
     .stderr(Stdio::inherit())

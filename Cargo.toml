@@ -1,6 +1,6 @@
 [package]
 name = "halogen"
-version = "0.1.0"
+version = "0.1.1"
 authors = ["Ryan Jacobs <ryanjacobs@utexas.edu>"]
 edition = "2018"
 
