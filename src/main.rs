@@ -201,7 +201,7 @@ fn handle_runner(runner: Runner) -> i32 {
     .expect("Failed to start")
     .wait()
     .expect("Failed to generate oxos iso");
-    let mut args = vec!("-smp", "4", "-cdrom", "oxos.iso", "--monitor", "none", "-device", "isa-debug-exit,iobase=0xf4,iosize=0x04", "-serial", "stdio", "-drive", "file=sample.img,index=3,media=disk,format=raw");
+    let mut args = vec!("-smp", "4", "-cdrom", "oxos.iso", "--monitor", "none", "-device", "isa-debug-exit,iobase=0xf4,iosize=0x04", "-serial", "stdio", "-drive", "file=sample.img,index=3,media=disk,format=raw", "-drive", "file=sfs.img,index=4,media=disk,format=raw");
     if !runner.graphic {
         args.push("-nographic");
     }
