@@ -5,6 +5,7 @@ use std::fs::File;
 use std::io::prelude::*;
 use std::io::SeekFrom;
 use std::time::SystemTime;
+use crate::clap::Clap;
 
 pub static EXIT_QEMU_SUCCESS: i64 = (5 << 1) | 1;
 pub static EXIT_QEMU_SIGNAL: i64 = (4 << 1) | 1;
