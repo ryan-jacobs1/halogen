@@ -34,13 +34,13 @@ enum SubCommand {
 
 #[derive(Clap)]
 struct Mksfs {
-    #[clap(short = "n", long = "name")]
+    #[clap(short = 'n', long = "name")]
     name: String,
 }
 
 #[derive(Clap)]
 struct Build {
-    #[clap(short = "d")]
+    #[clap(short = 'd')]
     debug: bool
 }
 
@@ -52,7 +52,7 @@ struct Run {
 
 #[derive(Clap)]
 struct Runner {
-    #[clap(short = "p", long = "path")]
+    #[clap(short = 'p', long = "path")]
     path: String,
     #[clap(short, long)]
     graphic: bool
