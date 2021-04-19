@@ -1,6 +1,6 @@
 #[macro_use]
 extern crate clap;
-use std::process::{Command, Stdio};
+use std::{path::{Path, PathBuf}, process::{Command, Stdio}};
 use std::fs::File;
 use std::io::prelude::*;
 use std::io::SeekFrom;
@@ -26,6 +26,8 @@ enum SubCommand {
     Run(Run),
     #[clap(name = "runner", version = "1.0", author = "Ryan Jacobs")]
     Runner(Runner),
+    #[clap(name = "runner-bootloader", version = "1.0", author = "Ryan Jacobs")]
+    RunnerBootloader(RunnerBootloader),
     #[clap(name = "mksfs", version = "1.0", author = "Chris DeLaGarza")]
     Mksfs(Mksfs),
     #[clap(name = "clean", version = "1.0", author = "Ryan Jacobs")]
@@ -58,12 +60,21 @@ struct Runner {
     graphic: bool
 }
 
+#[derive(Clap)]
+struct RunnerBootloader {
+    #[clap(short = 'p', long = "path")]
+    path: String,
+    #[clap(short, long)]
+    graphic: bool
+}
+
 fn main() {
     let opts = Opts::parse();
     let exit_code = match opts.subcmd {
         SubCommand::Build(build) => handle_build(build),
         SubCommand::Run(run) => handle_run(run),
         SubCommand::Runner(runner) => handle_runner(runner),
+        SubCommand::RunnerBootloader(rb) => handle_rb(rb),
         SubCommand::Mksfs(mksfs) => handle_mksfs(mksfs),
         SubCommand::Clean => handle_clean(),
     };
@@ -157,6 +168,81 @@ fn handle_run(run: Run) -> i32 {
     .expect("Failed to run OxidizedOS");
     
     return 0;
+}
+
+fn handle_rb(rb: RunnerBootloader) -> i32 {
+     let kernel_binary_path = {
+        let path = PathBuf::from(rb.path);
+        path.canonicalize().unwrap()
+    };
+
+    let disk_image = create_disk_image(&kernel_binary_path, false);
+    let disk_image_arg = format!("format=raw,file={}", disk_image.display());
+    let mut args = vec!["-smp", "4", "-drive", &disk_image_arg, "--monitor", "none", "-device", "isa-debug-exit,iobase=0xf4,iosize=0x04", "-serial", "stdio", "-drive", "file=sample.img,index=3,media=disk,format=raw", "-drive", "file=sfs.img,index=1,media=disk,format=raw"];
+    if !rb.graphic {
+        args.push("-nographic");
+    }
+    let status = Command::new("qemu-system-x86_64")
+    .args(&args)
+    .stdout(Stdio::inherit())
+    .stdin(Stdio::inherit())
+    .stderr(Stdio::inherit())
+    .spawn()
+    .expect("Failed to start")
+    .wait()
+    .expect("Failed to run qemu");
+
+    let code: i64 = match status.code() {
+        Some(code) => code as i64,
+        None => EXIT_QEMU_SIGNAL
+    };
+
+    match code {
+        code if code == EXIT_QEMU_SUCCESS => 0,
+        _ => 1
+    }
+}
+
+pub fn create_disk_image(kernel_binary_path: &Path, bios_only: bool) -> PathBuf {
+    let bootloader_manifest_path = bootloader_locator::locate_bootloader("bootloader").unwrap();
+    let kernel_manifest_path = locate_cargo_manifest::locate_manifest().unwrap();
+    println!("bootloader manifest parent path: {}", bootloader_manifest_path.parent().unwrap().clone().to_str().unwrap());
+    let mut build_cmd = Command::new("cargo");
+    build_cmd.current_dir(bootloader_manifest_path.parent().unwrap());
+    build_cmd.arg("builder");
+    build_cmd
+        .arg("--kernel-manifest")
+        .arg(&kernel_manifest_path);
+    build_cmd.arg("--kernel-binary").arg(&kernel_binary_path);
+    build_cmd
+        .arg("--target-dir")
+        .arg(kernel_manifest_path.parent().unwrap().join("target"));
+    build_cmd
+        .arg("--out-dir")
+        .arg(kernel_binary_path.parent().unwrap());
+    build_cmd.stdout(Stdio::inherit());
+    //build_cmd.arg("--quiet");
+    if bios_only {
+        build_cmd.arg("--firmware").arg("bios");
+    }
+
+    println!("{:?}", build_cmd);
+    if !build_cmd.status().unwrap().success() {
+        panic!("build failed");
+    }
+
+    let kernel_binary_name = kernel_binary_path.file_name().unwrap().to_str().unwrap();
+    let disk_image = kernel_binary_path
+        .parent()
+        .unwrap()
+        .join(format!("boot-bios-{}.img", kernel_binary_name));
+    if !disk_image.exists() {
+        panic!(
+            "Disk image does not exist at {} after bootloader build",
+            disk_image.display()
+        );
+    }
+    disk_image
 }
 
 fn handle_runner(runner: Runner) -> i32 {
